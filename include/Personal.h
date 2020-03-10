@@ -1,22 +1,17 @@
-#pragma once
+#ifndef PERSONAL_H
+#define PERSONAL_H
+
 #include "Employee.h"
 #include "WorkTime.h"
-//СТАВКА ЗА ЧАС
-class Personal : public Employee, public WorkTime {
+
+class Personal : public Employee, public WorkTime
+{
 protected:
-	int base; //ставка
-
+	float rate_in_hour;
 public:
-
-	Personal() {} //констр по умолчанию
-
-	void setBase(int base) { //установить ставку
-		this->base = base;
-	}
-
-	int getBase() const { //получить  ставку
-		return base;
-	}
-
-	~Personal() {}
+	Personal(int, string, int, float);
+	float calculate_payment_by_worktime() override;
+	void  calculate_payment() override;
 };
+
+#endif PERSONAL_H

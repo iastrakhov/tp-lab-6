@@ -1,8 +1,10 @@
-#pragma once
-class Heading //расчет оплаты по руководству(кол-ву подчиненных)
+#ifndef HEADING_H
+#define HEADING_H
+
+class Heading
 {
 public:
-	Heading() {}
-	virtual int HeadingPaymentMethod(int salary) = 0;
-	~Heading() {}
+	virtual float calculate_payment_by_heading() = 0;
 };
+
+#endif

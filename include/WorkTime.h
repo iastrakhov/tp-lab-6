@@ -1,10 +1,10 @@
-#pragma once
-//расчет зп исходя из отработанного времени(часы*ставку)
+#ifndef WORKTIME_H
+#define WORKTIME_H
 
-class WorkTime {
+class WorkTime
+{
 public:
-	WorkTime() {}
-
-	virtual int WorkTimePaymentMethod(int worktime, int base) = 0;
-	~WorkTime() {}
+	virtual float calculate_payment_by_worktime() = 0;
 };
+
+#endif

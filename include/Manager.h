@@ -1,51 +1,21 @@
-#pragma once
+#ifndef MANAGER_H
+#define MANAGER_H
+
 #include "Employee.h"
 #include "Project.h"
-//зп из денег проекта (которым управляет)
-class Manager : public Employee, public Project {
+#include "WorkProject.h"
+
+#include <vector>
+
+class Manager : public Employee, public Project
+{
 protected:
-	double deposit;
-	int budget;
-	string project;
-
+	float project_participation;
+	int project_budget;
 public:
-	Manager() {
-		this->deposit = 0;
-		this->budget = 0;
-		this->project = "";
-	}
-
-	Manager(int id, string name, string proj, int budget, double depos) {
-		this->id = id;
-		this->name = name;
-		this->project = proj;
-		this->budget = budget;
-		this->deposit = depos;
-
-		this->worktime = 0;
-		calculatePayment();
-	}
-	void calculatePayment() override { //метод установить зп
-		this->payment = ProjectPaymentMethod(this->budget, this->deposit); //по методу участия в проекте
-	}
-	int ProjectPaymentMethod(int budget, double deposit) override { //метод участие в проекте
-		int payment = budget * deposit;
-		return payment;
-	}
-	void setDeposit(double depos) { //установить вклад
-		this->deposit = depos;
-	}
-	double getDeposit() { //получить тек вклад
-		return deposit;
-	}
-
-	// задать проект
-	void setProject(string project_name) {
-		this->project = project_name;
-	}
-	string getProject() { //получить проект
-		return project;
-	}
-
-	~Manager() {}
+	Manager(int, string, float, int);
+	float calculate_payment_by_project() override;
+	void  calculate_payment() override;
 };
+
+#endif MANAGER_H

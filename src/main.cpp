@@ -1,143 +1,50 @@
-#include <iostream>
+#include "Creator.h"
+
 #include <fstream>
+#include <iostream>
+#include <string>
 #include <vector>
-#include "Employee.h"
-#include "Manager.h"
-#include "Cleaner.h"
-#include "Driver.h"
-#include "Programmer.h"
-#include "TeamLeader.h"
-#include "Tester.h"
-#include "ProjectManager.h"
-#include "SeniorManager.h"
+#include <sstream>
 
 using namespace std;
 
-int main() {
-	
-	vector <Employee*> workers; //создадим работника
+vector<string> split(const string& s, char delimiter)
+{
+	vector<string> Tokens;
+	string Token;
+	istringstream TokenStream(s);
+	while (getline(TokenStream, Token, delimiter))
+		Tokens.push_back(Token);
+	return Tokens;
+}
 
-	ifstream FileWorkers("C:\Users\Кирилл\source\repos\lab6\lab6\workers");  //загрузка данных из файла
+int main()
+{
 
-	if (!FileWorkers.is_open()) {
-		cout << "Failed to open" << endl;
-		return false;
-	}
-	else
+	system("chcp 1251");
+
+	WorkProject* project1 = new WorkProject("project_1", 100000);
+	WorkProject* project2 = new WorkProject("project_2", 200000);
+	WorkProject* project3 = new WorkProject("project_3", 300000);
+
+	vector<WorkProject *> projects = { project1, project2, project3 };
+
+	EmployeeFactory EF = EmployeeFactory(projects);
+
+	ifstream file("staff.txt");
+	vector<Employee*> staff;
+	while (!file.eof())
 	{
-		enum PROFFESIONS { TRAINEE, MANAGER, CLEANER, DRIVER, PROGRAMMER, TEAM_LEADER, TESTER, PROJECT_MANAGER, SENIOR_MANAGER };
-		PROFFESIONS pos_ID = TRAINEE; // стажер по умолчанию 
-		int id;
-
-		while (FileWorkers >> id) {
-			string name, surname, second_name, fio, position; //считаем 
-			FileWorkers >> name >> surname >> second_name >> position; //запишем в перемен
-			fio = name + " " + surname + " " + second_name;
-			//присвоение должности
-			if (position == "Cleaner")				    pos_ID = CLEANER;
-			else if (position == "Driver")				pos_ID = DRIVER;
-			else if (position == "ProjectManager")		pos_ID = PROJECT_MANAGER;
-			else if (position == "Tester")				pos_ID = TESTER;
-			else if (position == "Manager")				pos_ID = MANAGER;
-			else if (position == "TeamLeader")			pos_ID = TEAM_LEADER;
-			else if (position == "SeniorManager")		pos_ID = SENIOR_MANAGER;
-			else if (position == "Programmer")			pos_ID = PROGRAMMER;
-
-
-			int worktime = 0,
-				base = 0,
-				budget = 0,
-				salary = 0,
-				pjcts_amount = 0;
-
-			double deposit = 0.0;
-			string project = "";
-
-			switch (pos_ID) { //оюраюотаем данные кождой должности
-			case CLEANER:
-			{
-				FileWorkers >> worktime;
-				FileWorkers >> base;
-				workers.push_back(new Cleaner(id, fio, worktime, base));
-				break;
-			}
-			case DRIVER:
-			{
-				FileWorkers >> worktime;
-				FileWorkers >> base;
-				workers.push_back(new Driver(id, fio, worktime, base));
-				break;
-			}
-			case TESTER:
-			{
-				FileWorkers >> worktime;
-				FileWorkers >> base;
-				FileWorkers >> project;
-				FileWorkers >> budget;
-				FileWorkers >> deposit;
-				workers.push_back(new Tester(id, fio, worktime, base, project, budget, deposit));
-				break;
-			}
-			case PROGRAMMER:
-			{
-				FileWorkers >> worktime;
-				FileWorkers >> base;
-				FileWorkers >> project;
-				FileWorkers >> budget;
-				FileWorkers >> deposit;
-				workers.push_back(new Programmer(id, fio, worktime, base, project, budget, deposit));
-				break;
-			}
-			case TEAM_LEADER:
-			{
-				FileWorkers >> worktime;
-				FileWorkers >> base;
-				FileWorkers >> project;
-				FileWorkers >> budget;
-				FileWorkers >> deposit;
-				FileWorkers >> salary;
-				workers.push_back(new TeamLeader(id, fio, worktime, base, project, budget, deposit, salary));
-				break;
-			}
-			case MANAGER:
-			{
-				FileWorkers >> project;
-				FileWorkers >> budget;
-				FileWorkers >> deposit;
-				workers.push_back(new Manager(id, fio, project, budget, deposit));
-				break;
-			}
-			case PROJECT_MANAGER:
-			{
-				FileWorkers >> project;
-				FileWorkers >> budget;
-				FileWorkers >> deposit;
-				FileWorkers >> salary;
-				workers.push_back(new ProjectManager(id, fio, project, budget, deposit, salary));
-				break;
-			}
-			case SENIOR_MANAGER:
-			{
-				FileWorkers >> pjcts_amount;
-				FileWorkers >> deposit;
-				FileWorkers >> salary;
-				workers.push_back(new SeniorManager(id, fio, pjcts_amount, deposit, salary));
-				break;
-			}
-			}
-		}
-
-		FileWorkers.close(); //закрытие файла
-		for (int i = 0; i < workers.size(); ++i) { //вывод информ о работнике на экран
-			workers[i]->calculatePayment();
-			cout <<
-				workers[i]->getID() << "\t" <<
-				workers[i]->getFIO() << "\t" <<
-				workers[i]->getPaymentTime() << "\t" <<
-				workers[i]->getWorkTime()
-				<< endl;
-		}
+		string buf;
+		getline(file, buf, '\n');
+		vector<string> data = split(buf, ':');
+		staff.push_back(EF.create(data));
 	}
-	system("pause");
+
+	for (auto employee : staff)
+	{
+		employee->calculate_payment();
+		cout << "FIO: " << employee->get_name() << "   PAYMENT: " << employee->get_payment() << endl;
+	}
 	return 0;
 }

@@ -1,84 +1,204 @@
-﻿cmake_minimum_required(VERSION 2.8)
+﻿# Copyright (c) 2012 - 2015, Lars Bilke
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+#    may be used to endorse or promote products derived from this software without
+#    specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#
+#
+# 2012-01-31, Lars Bilke
+# - Enable Code Coverage
+#
+# 2013-09-17, Joakim Söderberg
+# - Added support for Clang.
+# - Some additional usage instructions.
+#
+# USAGE:
 
-# Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
-set(PROJECT_NAME task1) 
-project(${PROJECT_NAME})
+# 0. (Mac only) If you use Xcode 5.1 make sure to patch geninfo as described here:
+#      http://stackoverflow.com/a/22404544/80480
+#
+# 1. Copy this file into your cmake modules path.
+#
+# 2. Add the following line to your CMakeLists.txt:
+#      INCLUDE(CodeCoverage)
+#
+# 3. Set compiler flags to turn off optimization and enable coverage:
+#    SET(CMAKE_CXX_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
+#	 SET(CMAKE_C_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
+#
+# 3. Use the function SETUP_TARGET_FOR_COVERAGE to create a custom make target
+#    which runs your test executable and produces a lcov code coverage report:
+#    Example:
+#	 SETUP_TARGET_FOR_COVERAGE(
+#				my_coverage_target  # Name for custom target.
+#				test_driver         # Name of the test driver executable that runs the tests.
+#									# NOTE! This should always have a ZERO as exit code
+#									# otherwise the coverage generation will not complete.
+#				coverage            # Name of output directory.
+#				)
+#
+# 4. Build a Debug build:
+#	 cmake -DCMAKE_BUILD_TYPE=Debug ..
+#	 make
+#	 make my_coverage_target
+#
+#
 
-set(CMAKE_CXX_FLAGS "-g -Wall")
+# Check prereqs
+FIND_PROGRAM( GCOV_PATH gcov )
+FIND_PROGRAM( LCOV_PATH lcov )
+FIND_PROGRAM( GENHTML_PATH genhtml )
+FIND_PROGRAM( GCOVR_PATH gcovr PATHS ${CMAKE_SOURCE_DIR}/tests)
 
-# If you want your own include/ directory, set this, and then you can do
-# include_directories(${COMMON_INCLUDES}) in other CMakeLists.txt files.
-# set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
+IF(NOT GCOV_PATH)
+	MESSAGE(FATAL_ERROR "gcov not found! Aborting...")
+ENDIF() # NOT GCOV_PATH
 
-#----------------------------------------------------------------------------
-# Define project sources and includes
-#----------------------------------------------------------------------------
-set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
-include_directories(${COMMON_INCLUDES})
-file(GLOB TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/*.cpp)
+IF("${CMAKE_CXX_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
+	IF("${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS 3)
+		MESSAGE(FATAL_ERROR "Clang version must be 3.0.0 or greater! Aborting...")
+	ENDIF()
+ELSEIF(NOT CMAKE_COMPILER_IS_GNUCXX)
+	MESSAGE(FATAL_ERROR "Compiler is not GNU gcc! Aborting...")
+ENDIF() # CHECK VALID COMPILER
+
+SET(CMAKE_CXX_FLAGS_COVERAGE
+    "-g -O0 --coverage -fprofile-arcs -ftest-coverage"
+    CACHE STRING "Flags used by the C++ compiler during coverage builds."
+    FORCE )
+SET(CMAKE_C_FLAGS_COVERAGE
+    "-g -O0 --coverage -fprofile-arcs -ftest-coverage"
+    CACHE STRING "Flags used by the C compiler during coverage builds."
+    FORCE )
+SET(CMAKE_EXE_LINKER_FLAGS_COVERAGE
+    ""
+    CACHE STRING "Flags used for linking binaries during coverage builds."
+    FORCE )
+SET(CMAKE_SHARED_LINKER_FLAGS_COVERAGE
+    ""
+    CACHE STRING "Flags used by the shared libraries linker during coverage builds."
+    FORCE )
+MARK_AS_ADVANCED(
+    CMAKE_CXX_FLAGS_COVERAGE
+    CMAKE_C_FLAGS_COVERAGE
+    CMAKE_EXE_LINKER_FLAGS_COVERAGE
+    CMAKE_SHARED_LINKER_FLAGS_COVERAGE )
+
+IF ( NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Coverage"))
+  MESSAGE( WARNING "Code coverage results with an optimized (non-Debug) build may be misleading" )
+ENDIF() # NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
 
 
-set(SRC_FILES1 ${PROJECT_SOURCE_DIR}/src/Employee.cpp
-              ${PROJECT_SOURCE_DIR}/src/Personal.cpp
-              ${PROJECT_SOURCE_DIR}/src/Cleaner.cpp
-              ${PROJECT_SOURCE_DIR}/src/Driver.cpp
-              ${PROJECT_SOURCE_DIR}/src/Engineer.cpp
-              ${PROJECT_SOURCE_DIR}/src/Manager.cpp
-              ${PROJECT_SOURCE_DIR}/src/Programmer.cpp
-              ${PROJECT_SOURCE_DIR}/src/ProjectManager.cpp
-              ${PROJECT_SOURCE_DIR}/src/SeniorManager.cpp
-	      ${PROJECT_SOURCE_DIR}/src/Teamleader.cpp
-	      ${PROJECT_SOURCE_DIR}/src/Tester.cpp
-	      ${PROJECT_SOURCE_DIR}/src/Project.cpp
-              ${PROJECT_SOURCE_DIR}/src/Factory.cpp)
+# Param _targetname     The name of new the custom make target
+# Param _testrunner     The name of the target which runs the tests.
+#						MUST return ZERO always, even on errors.
+#						If not, no coverage report will be created!
+# Param _outputname     lcov output is generated as _outputname.info
+#                       HTML report is generated in _outputname/index.html
+# Optional fourth parameter is passed as arguments to _testrunner
+#   Pass them in list form, e.g.: "-j;2" for -j 2
+FUNCTION(SETUP_TARGET_FOR_COVERAGE _targetname _testrunner _outputname)
 
-set(CMAKE_CXX_STANDARD 11)
+	IF(NOT LCOV_PATH)
+		MESSAGE(FATAL_ERROR "lcov not found! Aborting...")
+	ENDIF() # NOT LCOV_PATH
 
-add_library(task1_lib ${SRC_FILES1})
-add_executable(task1 ${PROJECT_SOURCE_DIR}/src/main.cpp)
+	IF(NOT GENHTML_PATH)
+		MESSAGE(FATAL_ERROR "genhtml not found! Aborting...")
+	ENDIF() # NOT GENHTML_PATH
 
-target_link_libraries(task1 task1_lib)
+	SET(coverage_info "${CMAKE_BINARY_DIR}/${_outputname}.info")
+	SET(coverage_cleaned "${coverage_info}.cleaned")
 
-################################
-# Testing
-################################
+	SEPARATE_ARGUMENTS(test_command UNIX_COMMAND "${_testrunner}")
 
-# Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(BUILD_TESTS "Build all tests." OFF) # Makes boolean 'test' available.
+	# Setup target
+	ADD_CUSTOM_TARGET(${_targetname}
 
-if (BUILD_TESTS)
-  # This adds another subdirectory, which has 'project(gtest)'.
-  add_subdirectory(ext/gtest-1.8.0)
+		# Cleanup lcov
+		${LCOV_PATH} --directory . --zerocounters
 
-  enable_testing()
+		# Run tests
+		COMMAND ${test_command} ${ARGV3}
 
-  # Include the gtest library. gtest_SOURCE_DIR is available due to
-  # 'project(gtest)' above.
-  include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+		COMMAND lcov --version
+		COMMAND gcov --version
+		COMMAND g++ --version
+		
+		# Capturing lcov counters and generating report
+		COMMAND ${LCOV_PATH} --directory . --base-directory . --capture --output-file coverage.info
+        COMMAND ${LCOV_PATH} --remove coverage.info '/usr*' '*/test/*' '*/ext/*' -o coverage.info
 
-  ##############
-  # Unit Tests
-  ##############
-  add_executable(runUnitTests ${TEST_SRC_FILES})
+		#COMMAND ${LCOV_PATH} --directory . --capture --output-file ${coverage_info}
+		#COMMAND ${LCOV_PATH} --remove ${coverage_info} 'tests/*' '/usr/*' --output-file ${coverage_cleaned}
+		#COMMAND ${GENHTML_PATH} -o ${_outputname} ${coverage_cleaned}
+		#COMMAND ${CMAKE_COMMAND} -E remove ${coverage_info} ${coverage_cleaned}
 
-  # Standard linking to gtest stuff.
-  target_link_libraries(runUnitTests gtest gtest_main)
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+		COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
+	)
 
-  # Extra linking for the project.
-  target_link_libraries(runUnitTests task1_lib)
+	# Show info where to find the report
+	#ADD_CUSTOM_COMMAND(TARGET ${_targetname} POST_BUILD
+	#	COMMAND ;
+	#	COMMENT "Open ./${_outputname}/index.html in your browser to view the coverage report."
+	#)
 
-  # This is so you can do 'make test' to see all your tests run, instead of
-  # manually running the executable runUnitTests to see those specific tests.
-  add_test(UnitTests runUnitTests)
+ENDFUNCTION() # SETUP_TARGET_FOR_COVERAGE
 
-  set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/.travis/cmake)
+# Param _targetname     The name of new the custom make target
+# Param _testrunner     The name of the target which runs the tests
+# Param _outputname     cobertura output is generated as _outputname.xml
+# Optional fourth parameter is passed as arguments to _testrunner
+#   Pass them in list form, e.g.: "-j;2" for -j 2
+FUNCTION(SETUP_TARGET_FOR_COVERAGE_COBERTURA _targetname _testrunner _outputname)
 
-  if (CMAKE_BUILD_TYPE STREQUAL "Coverage")
-    include(CodeCoverage)
-    setup_target_for_coverage(${PROJECT_NAME}_coverage runUnitTests coverage)
+	IF(NOT PYTHON_EXECUTABLE)
+		MESSAGE(FATAL_ERROR "Python not found! Aborting...")
+	ENDIF() # NOT PYTHON_EXECUTABLE
 
-    SET(CMAKE_CXX_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
-    SET(CMAKE_C_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
-  endif() #CMAKE_BUILD_TYPE STREQUAL "Coverage"
+	IF(NOT GCOVR_PATH)
+		MESSAGE(FATAL_ERROR "gcovr not found! Aborting...")
+	ENDIF() # NOT GCOVR_PATH
 
-endif()
+	ADD_CUSTOM_TARGET(${_targetname}
+
+		# Run tests
+		${_testrunner} ${ARGV3}
+
+		# Running gcovr
+		COMMAND ${GCOVR_PATH} -x -r ${CMAKE_SOURCE_DIR} -e '${CMAKE_SOURCE_DIR}/tests/'  -o ${_outputname}.xml
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+		COMMENT "Running gcovr to produce Cobertura code coverage report."
+	)
+
+	# Show info where to find the report
+	ADD_CUSTOM_COMMAND(TARGET ${_targetname} POST_BUILD
+		COMMAND ;
+		COMMENT "Cobertura code coverage report saved in ${_outputname}.xml."
+	)
+
+ENDFUNCTION() # SETUP_TARGET_FOR_COVERAGE_COBERTURA

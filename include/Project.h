@@ -1,8 +1,10 @@
-#pragma once
-//рассчет оплаты исходя из участия (бонусы от участия в проекте/делится пропорционально вкладу в данный проект)
-class Project {
+#ifndef PROJECT_H
+#define PROJECT_H
+
+class Project
+{
 public:
-	Project() {}
-	virtual int ProjectPaymentMethod(int budget, double deposit) = 0;
-	~Project() {}
+	virtual float calculate_payment_by_project() = 0;
 };
+
+#endif
