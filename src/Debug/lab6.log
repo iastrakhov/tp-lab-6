@@ -1,0 +1,10 @@
+﻿  main.cpp
+c:\users\кирилл\source\repos\lab6\lab6\manager.h(32): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
+c:\users\кирилл\source\repos\lab6\lab6\engineer.h(22): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
+c:\users\кирилл\source\repos\lab6\lab6\seniormanager.h(24): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
+c:\users\кирилл\source\repos\lab6\lab6\main.cpp(20): warning C4129: :
+c:\users\кирилл\source\repos\lab6\lab6\main.cpp(20): warning C4129: s: неизвестная escape-последовательность
+c:\users\кирилл\source\repos\lab6\lab6\main.cpp(20): warning C4129: l: неизвестная escape-последовательность
+c:\users\кирилл\source\repos\lab6\lab6\main.cpp(20): warning C4129: w: неизвестная escape-последовательность
+c:\users\кирилл\source\repos\lab6\lab6\main.cpp(131): warning C4018: <: несоответствие типов со знаком и без знака
+  lab6.vcxproj -> C:\Users\Кирилл\source\repos\lab6\Debug\lab6.exe
